@@ -17,14 +17,14 @@ Klononi projektin me komandën:
 git clone https://github.com/enis-halilaj/pvdh-projekti-msc
 ```
 
-### 3. Instalimi i Varësive
-Pasi të jeni në direktoriumin e projektit, instaloni varësitë duke përdorur këtë komandë:
+### 3. Instalimi i paketave
+Pasi të jeni në direktoriumin e projektit, instaloni paketat duke përdorur këtë komandë:
 ```bash
 pip3 install -r requirements.txt
 ```
 
 ### 4. Ekzekutimi i Projektit
-Pasi të keni instaluar varësitë, startoni projektin me komandën:
+Pasi të keni instaluar paketat, startoni projektin me komandën:
 
 ```bash
 python3 app.py
