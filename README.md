@@ -23,10 +23,3 @@ Pasi të jeni në direktoriumin e projektit, instaloni paketat duke përdorur k�
 pip3 install -r requirements.txt
 ```
 
-### 4. Ekzekutimi i Projektit
-Pasi të keni instaluar paketat, startoni projektin me komandën:
-
-```bash
-python3 app.py
-```
-
