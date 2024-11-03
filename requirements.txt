@@ -1,6 +1,7 @@
 pandas
-scikit-learn
 numpy
+scipy
+ipython
+scikit-learn
 matplotlib
 seaborn
-jupyterlab
