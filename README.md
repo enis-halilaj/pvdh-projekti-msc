@@ -3409,5 +3409,56 @@ plt.show()
 ![png](readme_files/main_53_1.png)
     
 ![png](readme_files/main_53_2.png)
+
+<h3> Analiza e Skewness në të dhënat </h3>
+<p>Në këtë pjesë, tregojm mënyrën e analizës së shpërndarjeve të të dhënave jo-simetrike, duke përdorur një shembull me të dhëna të shtrembëruara. Ky lloj shpërndarjeje është shpesh karakteristik për të dhënat reale dhe mund të ndikojë në përdorimin e teknikave statistikore</p>
+
+```python
+numeric_data = pre_df.select_dtypes(include=['number'])  # Zgjedh të dhënat numerike
+
+skewness = numeric_data.skew()  # Llogarit shtrembërimin
+
+positive_skew = skewness[skewness > 0]  # Kolonat me shtrembërim pozitiv
+negative_skew = skewness[skewness < 0]  # Kolonat me shtrembërim negativ
+
+# Krijon një grafik për çdo kolone numerike
+fig, axes = plt.subplots(nrows=len(numeric_data.columns), ncols=1, figsize=(10, 5 * len(numeric_data.columns)))
+
+if len(numeric_data.columns) == 1:  # Siguron që 'axes' të jetë lista kur ka vetëm një kolone
+axes = [axes]
+
+# Krijon histogram dhe vizaton mesataren dhe medianën për secilën kolone
+for ax, column in zip(axes, numeric_data.columns):
+numeric_data[column].hist(ax=ax, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
+ax.set_title(f"{column} (Skewness: {skewness[column]:.2f})", fontsize=14)
+ax.axvline(numeric_data[column].mean(), color='red', linestyle='dashed', linewidth=1, label="Mean")
+ax.axvline(numeric_data[column].median(), color='green', linestyle='dashed', linewidth=1, label="Median")
+ax.legend()
+
+plt.tight_layout()  # Siguron që grafiku të jetë i organizuar mirë
+plt.show()  # Shfaq grafikun
+```
+
+<h5>Hours Studied</h5>
+![main_54_1.png](readme_files/main_54_1.png)
+
+
+<h5>Attendance</h5>
+![main_54_2.png](readme_files/main_54_2.png)
+
+<h5>Sleep Hours</h5>
+![main_54_3.png](readme_files/main_54_3.png)
+
+<h5>Previous Scores</h5>
+![main_54_4.png](readme_files/main_54_4.png)
+
+<h5>Tutoring Sessions</h5>
+![main_54_5.png](readme_files/main_54_5.png)
+
+<h5>Physical Activity</h5>
+![main_54_6.png](readme_files/main_54_6.png)
+
+<h5>Exam Score</h5>
+![main_54_7.png](readme_files/main_54_7.png)
     
 
