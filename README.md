@@ -3440,23 +3440,30 @@ plt.show()  # Shfaq grafikun
 ```
 
 <h5>Hours Studied</h5>
+
 ![png](readme_files/main_54_1.png)
 
 <h5>Attendance</h5>
+
 ![png](readme_files/main_54_2.png)
 
 <h5>Sleep Hours</h5>
+
 ![png](readme_files/main_54_3.png)
 
 <h5>Previous Scores</h5>
+
 ![png](readme_files/main_54_4.png)
 
 <h5>Tutoring Sessions</h5>
+
 ![png](readme_files/main_54_5.png)
 
 <h5>Physical Activity</h5>
+
 ![png](readme_files/main_54_6.png)
 
 <h5>Exam Score</h5>
+
 ![png](readme_files/main_54_7.png)    
 
