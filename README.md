@@ -37,13 +37,9 @@ Pasi të jeni në direktoriumin e projektit, instaloni paketat duke përdorur k�
 pip3 install -r requirements.txt
 ```
 
-
-
-
 <h1>Faktorët e performancës së studentëve</h1>
 
 <p>Qëllimi i preprocesimit të datasetit <b>Faktorët e performancës së studentëve</b> është të strukturojë dhe pastrojë të dhënat për të lehtësuar analizën e thellë të ndikimeve në performancën akademike të studentëve. Ky proces siguron që të dhënat të jenë të pastra, të organizuara, dhe të gatshme për të zbuluar lidhjet kyçe që influencojnë suksesin e studentëve. Përmes kësaj analize të dhënash të përpunuara, mund të identifikohen dhe zbatohen strategji të efektshme arsimore që ndihmojnë në përmirësimin e arritjeve të studentëve dhe në ngritjen e cilësisë së proceseve mësimore.</p>
-
 
 <h3>Libraritë e përdorura</h3>
 
@@ -52,14 +48,20 @@ pip3 install -r requirements.txt
 import pandas as pd
 import numpy as np
 from scipy import stats
-from scipy.stats import zscore
+from scipy.stats import zscore, norm
 from IPython.display import display
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
+from sklearn.cluster import DBSCAN, KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
+from imblearn.over_sampling import SMOTE, ADASYN
+import seaborn as sns
+import pandas as pd
 from sklearn.ensemble import IsolationForest
+from sklearn.decomposition import PCA
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.interpolate import griddata
 ```
-
 
 <h3>Leximi i datasetit</h3>
 
@@ -78,14 +80,16 @@ pre_df = pd.read_csv("../dataset/StudentPerformanceFactors_new.csv")
 
 <h4>Struktura e datasetit </h4>
 
+
 ```python
 display(main_df.head())
 ```
-<div>
 
+
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -229,7 +233,9 @@ display(main_df.head())
 </table>
 </div>
 
+
 <h4>Definimi i tipeve të të dhënave</h4>
+
 
 ```python
 print("Tipet e të dhënave: \n")
@@ -272,1372 +278,9 @@ print("\nAtributet numerike :", list(numerical_columns))
     Atributet numerike : ['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Tutoring_Sessions', 'Physical_Activity', 'Exam_Score']
 
 
-
-<h3>Detektimi dhe pastrimi nga noisy data</h3>
-
-
-```python
-# Zgjedhja e kolonave numerike
-numerical_columns = pre_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-
-# Llogaritja e Z-Score për çdo kolonë numerike për detektimin e noisy data
-z_scores = np.abs(stats.zscore(pre_df[numerical_columns]))
-
-# Vendosim pragun për të definuar se çfarë konsiderohet noisy (p.sh., Z-Score më i madh se 3)
-threshold = 3
-noisy_data_mask = (z_scores > threshold)
-
-# Kontrollo dhe shfaq rreshtat që kanë vlera noisy
-noisy_rows = pre_df[noisy_data_mask.any(axis=1)]
-print(f"Numri i rreshtave me të dhëna noisy: {len(noisy_rows)}")
-display(noisy_rows)
-
-# Heqim rreshtat që kanë vlera noisy
-pre_df_cleaned = pre_df[~noisy_data_mask.any(axis=1)]
-
-# Shfaqim dataset-in e pastruar
-print("Dataframe pas eliminimit të noisy data:")
-display(pre_df_cleaned.head())
-```
-
-    Numri i rreshtave me të dhëna noisy: 51
-
-<div>
-
-<table border="1" class="dataframe">
-  <thead>
-    <tr >
-      <th></th>
-      <th>Hours_Studied</th>
-      <th>Attendance</th>
-      <th>Parental_Involvement</th>
-      <th>Extracurricular_Activities</th>
-      <th>Sleep_Hours</th>
-      <th>Previous_Scores</th>
-      <th>Motivation_Level</th>
-      <th>Internet_Access</th>
-      <th>Tutoring_Sessions</th>
-      <th>Family_Income</th>
-      <th>Teacher_Quality</th>
-      <th>School_Type</th>
-      <th>Peer_Influence</th>
-      <th>Physical_Activity</th>
-      <th>Learning_Disabilities</th>
-      <th>Parental_Education_Level</th>
-      <th>Distance_from_Home</th>
-      <th>Gender</th>
-      <th>Exam_Score</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>209</th>
-      <td>43</td>
-      <td>86</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>97</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>1</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>78.0</td>
-    </tr>
-    <tr>
-      <th>262</th>
-      <td>1</td>
-      <td>69</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>97</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>61.0</td>
-    </tr>
-    <tr>
-      <th>478</th>
-      <td>38</td>
-      <td>86</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>79</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>73.0</td>
-    </tr>
-    <tr>
-      <th>679</th>
-      <td>28</td>
-      <td>65</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>4</td>
-      <td>64</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>3</td>
-      <td>No</td>
-      <td>Postgraduate</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>70.0</td>
-    </tr>
-    <tr>
-      <th>724</th>
-      <td>21</td>
-      <td>73</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>85</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>5</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>70.0</td>
-    </tr>
-    <tr>
-      <th>1462</th>
-      <td>19</td>
-      <td>62</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>79</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>66.0</td>
-    </tr>
-    <tr>
-      <th>1548</th>
-      <td>25</td>
-      <td>95</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>7</td>
-      <td>78</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>73.0</td>
-    </tr>
-    <tr>
-      <th>1591</th>
-      <td>2</td>
-      <td>84</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>8</td>
-      <td>54</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Low</td>
-      <td>Low</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>62.0</td>
-    </tr>
-    <tr>
-      <th>1615</th>
-      <td>39</td>
-      <td>95</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>9</td>
-      <td>54</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>77.0</td>
-    </tr>
-    <tr>
-      <th>1848</th>
-      <td>26</td>
-      <td>93</td>
-      <td>High</td>
-      <td>No</td>
-      <td>6</td>
-      <td>94</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>High</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>74.0</td>
-    </tr>
-    <tr>
-      <th>1957</th>
-      <td>39</td>
-      <td>97</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>10</td>
-      <td>91</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>79.0</td>
-    </tr>
-    <tr>
-      <th>1971</th>
-      <td>2</td>
-      <td>96</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>9</td>
-      <td>77</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Far</td>
-      <td>Female</td>
-      <td>65.0</td>
-    </tr>
-    <tr>
-      <th>2024</th>
-      <td>2</td>
-      <td>98</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>80</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>1</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>66.0</td>
-    </tr>
-    <tr>
-      <th>2040</th>
-      <td>16</td>
-      <td>66</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>6</td>
-      <td>93</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Far</td>
-      <td>Male</td>
-      <td>63.0</td>
-    </tr>
-    <tr>
-      <th>2198</th>
-      <td>16</td>
-      <td>92</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>4</td>
-      <td>90</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>High</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>72.0</td>
-    </tr>
-    <tr>
-      <th>2231</th>
-      <td>25</td>
-      <td>72</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>78</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>8</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>69.0</td>
-    </tr>
-    <tr>
-      <th>2237</th>
-      <td>14</td>
-      <td>81</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>6</td>
-      <td>89</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>3</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>67.0</td>
-    </tr>
-    <tr>
-      <th>2265</th>
-      <td>27</td>
-      <td>97</td>
-      <td>High</td>
-      <td>No</td>
-      <td>8</td>
-      <td>72</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>2</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>76.0</td>
-    </tr>
-    <tr>
-      <th>2305</th>
-      <td>39</td>
-      <td>92</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>9</td>
-      <td>73</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>Postgraduate</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>75.0</td>
-    </tr>
-    <tr>
-      <th>2346</th>
-      <td>17</td>
-      <td>91</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>10</td>
-      <td>84</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>Yes</td>
-      <td>College</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>71.0</td>
-    </tr>
-    <tr>
-      <th>2506</th>
-      <td>38</td>
-      <td>63</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>8</td>
-      <td>52</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>69.0</td>
-    </tr>
-    <tr>
-      <th>2521</th>
-      <td>38</td>
-      <td>86</td>
-      <td>High</td>
-      <td>No</td>
-      <td>6</td>
-      <td>88</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>74.0</td>
-    </tr>
-    <tr>
-      <th>2699</th>
-      <td>28</td>
-      <td>86</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>10</td>
-      <td>85</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>72.0</td>
-    </tr>
-    <tr>
-      <th>2718</th>
-      <td>16</td>
-      <td>72</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>9</td>
-      <td>76</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>Low</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>67.0</td>
-    </tr>
-    <tr>
-      <th>2895</th>
-      <td>44</td>
-      <td>68</td>
-      <td>High</td>
-      <td>No</td>
-      <td>9</td>
-      <td>75</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>71.0</td>
-    </tr>
-    <tr>
-      <th>2947</th>
-      <td>2</td>
-      <td>67</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>73</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Positive</td>
-      <td>2</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>58.0</td>
-    </tr>
-    <tr>
-      <th>3388</th>
-      <td>25</td>
-      <td>94</td>
-      <td>High</td>
-      <td>No</td>
-      <td>8</td>
-      <td>96</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>3</td>
-      <td>Yes</td>
-      <td>High School</td>
-      <td>Far</td>
-      <td>Female</td>
-      <td>74.0</td>
-    </tr>
-    <tr>
-      <th>3454</th>
-      <td>2</td>
-      <td>99</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>9</td>
-      <td>52</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>0</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>62.0</td>
-    </tr>
-    <tr>
-      <th>3617</th>
-      <td>18</td>
-      <td>95</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>94</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Far</td>
-      <td>Female</td>
-      <td>73.0</td>
-    </tr>
-    <tr>
-      <th>3716</th>
-      <td>39</td>
-      <td>90</td>
-      <td>High</td>
-      <td>No</td>
-      <td>8</td>
-      <td>92</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>1</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>78.0</td>
-    </tr>
-    <tr>
-      <th>3880</th>
-      <td>22</td>
-      <td>97</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>5</td>
-      <td>68</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>5</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>75.0</td>
-    </tr>
-    <tr>
-      <th>3894</th>
-      <td>18</td>
-      <td>72</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>7</td>
-      <td>58</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>0</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>64.0</td>
-    </tr>
-    <tr>
-      <th>3982</th>
-      <td>39</td>
-      <td>75</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>82</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>High</td>
-      <td>Low</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>3</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>73.0</td>
-    </tr>
-    <tr>
-      <th>4009</th>
-      <td>24</td>
-      <td>69</td>
-      <td>High</td>
-      <td>No</td>
-      <td>7</td>
-      <td>69</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>7</td>
-      <td>High</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>70.0</td>
-    </tr>
-    <tr>
-      <th>4091</th>
-      <td>29</td>
-      <td>94</td>
-      <td>High</td>
-      <td>No</td>
-      <td>7</td>
-      <td>79</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>76.0</td>
-    </tr>
-    <tr>
-      <th>4198</th>
-      <td>2</td>
-      <td>98</td>
-      <td>High</td>
-      <td>No</td>
-      <td>4</td>
-      <td>64</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>2</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>65.0</td>
-    </tr>
-    <tr>
-      <th>4247</th>
-      <td>33</td>
-      <td>92</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>67</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>High</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>5</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>78.0</td>
-    </tr>
-    <tr>
-      <th>4697</th>
-      <td>28</td>
-      <td>99</td>
-      <td>High</td>
-      <td>No</td>
-      <td>5</td>
-      <td>100</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Neutral</td>
-      <td>5</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>76.0</td>
-    </tr>
-    <tr>
-      <th>4725</th>
-      <td>1</td>
-      <td>81</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>8</td>
-      <td>66</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>2</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>60.0</td>
-    </tr>
-    <tr>
-      <th>4779</th>
-      <td>1</td>
-      <td>88</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>4</td>
-      <td>72</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>2</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>92.0</td>
-    </tr>
-    <tr>
-      <th>4799</th>
-      <td>24</td>
-      <td>98</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>8</td>
-      <td>61</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>75.0</td>
-    </tr>
-    <tr>
-      <th>4870</th>
-      <td>38</td>
-      <td>90</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>4</td>
-      <td>60</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>74.0</td>
-    </tr>
-    <tr>
-      <th>4997</th>
-      <td>39</td>
-      <td>67</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>5</td>
-      <td>76</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>71.0</td>
-    </tr>
-    <tr>
-      <th>5157</th>
-      <td>38</td>
-      <td>82</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>97</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>3</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>72.0</td>
-    </tr>
-    <tr>
-      <th>5224</th>
-      <td>38</td>
-      <td>80</td>
-      <td>High</td>
-      <td>No</td>
-      <td>5</td>
-      <td>78</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>4</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Far</td>
-      <td>Female</td>
-      <td>72.0</td>
-    </tr>
-    <tr>
-      <th>5680</th>
-      <td>14</td>
-      <td>82</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>94</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Private</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>Postgraduate</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>71.0</td>
-    </tr>
-    <tr>
-      <th>5796</th>
-      <td>39</td>
-      <td>78</td>
-      <td>Medium</td>
-      <td>No</td>
-      <td>6</td>
-      <td>73</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>0</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>2</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Far</td>
-      <td>Male</td>
-      <td>70.0</td>
-    </tr>
-    <tr>
-      <th>5846</th>
-      <td>38</td>
-      <td>98</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>6</td>
-      <td>94</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Low</td>
-      <td>Low</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>Postgraduate</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>75.0</td>
-    </tr>
-    <tr>
-      <th>5855</th>
-      <td>9</td>
-      <td>64</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>99</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>6</td>
-      <td>Yes</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>65.0</td>
-    </tr>
-    <tr>
-      <th>6061</th>
-      <td>24</td>
-      <td>67</td>
-      <td>High</td>
-      <td>No</td>
-      <td>6</td>
-      <td>86</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Private</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>Yes</td>
-      <td>Postgraduate</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>67.0</td>
-    </tr>
-    <tr>
-      <th>6485</th>
-      <td>35</td>
-      <td>84</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>8</td>
-      <td>92</td>
-      <td>High</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>Low</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>74.0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-    Dataframe pas eliminimit të noisy data:
-
-
-
-<div>
-
-<table border="1" class="dataframe">
-  <thead>
-    <tr >
-      <th></th>
-      <th>Hours_Studied</th>
-      <th>Attendance</th>
-      <th>Parental_Involvement</th>
-      <th>Extracurricular_Activities</th>
-      <th>Sleep_Hours</th>
-      <th>Previous_Scores</th>
-      <th>Motivation_Level</th>
-      <th>Internet_Access</th>
-      <th>Tutoring_Sessions</th>
-      <th>Family_Income</th>
-      <th>Teacher_Quality</th>
-      <th>School_Type</th>
-      <th>Peer_Influence</th>
-      <th>Physical_Activity</th>
-      <th>Learning_Disabilities</th>
-      <th>Parental_Education_Level</th>
-      <th>Distance_from_Home</th>
-      <th>Gender</th>
-      <th>Exam_Score</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>23</td>
-      <td>84</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>7</td>
-      <td>73</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>0</td>
-      <td>Low</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Positive</td>
-      <td>3</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>67.0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>19</td>
-      <td>64</td>
-      <td>Low</td>
-      <td>No</td>
-      <td>8</td>
-      <td>59</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Moderate</td>
-      <td>Female</td>
-      <td>61.0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>24</td>
-      <td>98</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>7</td>
-      <td>91</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>2</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>No</td>
-      <td>Postgraduate</td>
-      <td>Near</td>
-      <td>Male</td>
-      <td>74.0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>29</td>
-      <td>89</td>
-      <td>Low</td>
-      <td>Yes</td>
-      <td>8</td>
-      <td>98</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>1</td>
-      <td>Medium</td>
-      <td>Medium</td>
-      <td>Public</td>
-      <td>Negative</td>
-      <td>4</td>
-      <td>No</td>
-      <td>High School</td>
-      <td>Moderate</td>
-      <td>Male</td>
-      <td>71.0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>19</td>
-      <td>92</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>6</td>
-      <td>65</td>
-      <td>Medium</td>
-      <td>Yes</td>
-      <td>3</td>
-      <td>Medium</td>
-      <td>High</td>
-      <td>Public</td>
-      <td>Neutral</td>
-      <td>4</td>
-      <td>No</td>
-      <td>College</td>
-      <td>Near</td>
-      <td>Female</td>
-      <td>70.0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-<h3>Detektimi dhe pastrimi i outliers</h3>
-
-```python
-# Zgjedh vetëm kolonat numerike për zbulimin e outliers
-numerical_data = main_df.select_dtypes(include=['int64', 'float64'])
-
-# Llogarit Z-Score
-z_scores = np.abs(zscore(numerical_data))
-threshold = 3  # Kufiri bazë për zbulimin e outliers
-
-# Identifikon rreshtat me Z-Score më të madhe se kufiri
-outliers = (z_scores > threshold).any(axis=1)
-
-# Numëron sa outliers u identifikuan
-num_outliers = outliers.sum()
-print(f"Numri i outliers që janë identifikuar: {num_outliers}")
-
-# Eleminon outliers nga dataseti origjinal
-pre_df = main_df[~outliers]
-
-# Visualizimi i shpërndarjes së të dhënave numerike dhe identifikimi i outliers me anë të Boxplot
-plt.figure(figsize=(12, 6))
-sns.boxplot(data=numerical_data)
-plt.title('Box Plot i të dhënave numerike me outliers')
-plt.show()
-
-```
-
-    Numri i outliers që janë identifikuar: 101
-
-    
-![png](readme_files/main_14_1.png)
-    
-
 <h4>Menaxhimi vlerave të zbrazëta (null):</h4>
+
+
 
 ```python
 # Metoda për gjetjen e vlerave null
@@ -1649,32 +292,33 @@ has_nulls = pre_df.isnull().any()
 print('\nAtributet që kanë vlera të zbrazëta (null):', ', '.join(has_nulls[has_nulls].index))
 ```
 
-    Hours_Studied                 0
-    Attendance                    0
-    Parental_Involvement          0
-    Access_to_Resources           0
-    Extracurricular_Activities    0
-    Sleep_Hours                   0
-    Previous_Scores               0
-    Motivation_Level              0
-    Internet_Access               0
-    Tutoring_Sessions             0
-    Family_Income                 0
-    Teacher_Quality               0
-    School_Type                   0
-    Peer_Influence                0
-    Physical_Activity             0
-    Learning_Disabilities         0
-    Parental_Education_Level      0
-    Distance_from_Home            0
-    Gender                        0
-    Exam_Score                    0
+    Hours_Studied                  0
+    Attendance                     0
+    Parental_Involvement           0
+    Access_to_Resources            0
+    Extracurricular_Activities     0
+    Sleep_Hours                    0
+    Previous_Scores                0
+    Motivation_Level               0
+    Internet_Access                0
+    Tutoring_Sessions              0
+    Family_Income                  0
+    Teacher_Quality               78
+    School_Type                    0
+    Peer_Influence                 0
+    Physical_Activity              0
+    Learning_Disabilities          0
+    Parental_Education_Level      90
+    Distance_from_Home            67
+    Gender                         0
+    Exam_Score                     0
     dtype: int64
     
-    Atributet që kanë vlera të zbrazëta (null): 
+    Atributet që kanë vlera të zbrazëta (null): Teacher_Quality, Parental_Education_Level, Distance_from_Home
 
 
 <p>Në kodin më poshtë, kemi përpunuar të dhënat duke zëvëndësuar vlerat null me vlera të përshtatshme në varësi të tipit të atributit (kolonës). Fillimisht kemi bërë identifikimin e kolonave me vlera të zbrazëta të cilat ndahen në dy grupe: numerike dhe kategorike. Kolonat numerike zëvëndësohen me medianën për të shmangur ndikimin e outliers, ndërsa kolona të tjera numerike përdorin mesataren. Për kolonat kategorike, vlerat null zëvëndesohen me vlerën më të shpeshtë. Pas kësaj kontrollohet dataset-i për të siguruar që të gjitha vlerat <b>null</b> janë zëvëndësuar duke lejuar modifikimin direkt të të dhënave me <b>inplace=True</b> dhe duke parandaluar kopjet e padëshiruara.</p>
+
 
 ```python
 # Ndarja e kolonave në numerike dhe kategorike
@@ -1722,22 +366,6 @@ print(pre_df.isnull().sum())
     Exam_Score                    0
     dtype: int64
 
-
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\792950414.py:6: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      pre_df.fillna({'Exam_Score': pre_df['Exam_Score'].median()}, inplace=True)
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\792950414.py:11: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      pre_df.fillna({col: pre_df[col].mean()}, inplace=True)
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\792950414.py:15: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      pre_df.fillna({col: pre_df[col].mode()[0]}, inplace=True)
 
 
 ```python
@@ -1796,13 +424,8 @@ print(pre_df.isnull().sum())
     dtype: int64
 
 
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\2461744827.py:26: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      pre_df.dropna(subset=columns, inplace=True)
-
 <h4>Identifikimi i duplikimeve (duplicates)</h4>
+
 
 ```python
 # Komanda për identifikimin e duplikimeve
@@ -1811,10 +434,11 @@ print("Duplikimet e gjetura: " + str(pre_df.duplicated().sum()))
 
     Duplikimet e gjetura: 0
 
+
 <p>Në dataset-in tonë nuk kemi gjetur ndonjë duplikat prandaj nuk ishte e nevojshme të bëjme asnjë fshirje të duplikateve. Kjo konfirmon kualitetin e të dhënave dhe na lejon të vazhdojmë me analizën e mëtejme.</p>
 
-
 <h3>Agregimi i të dhënave</h3>
+
 
 ```python
 # Agregimi sipas 'Parental_Involvement' dhe 'Internet_Access' për të vlerësuar ndikimin e tyre në 'Previous_Scores'.
@@ -1839,21 +463,21 @@ print(avg_hours_studied_by_school_and_teacher)
     Mesatarja e rezultateve të mëparshme sipas përfshirjes së prindërve dhe çasjes në internet:
                                           Exam_Score
     Parental_Involvement Internet_Access            
-    High                 No                    66.72
-                         Yes                   67.93
-    Low                  No                    65.61
-                         Yes                   66.18
-    Medium               No                    66.32
-                         Yes                   67.01
+    High                 No                    67.07
+                         Yes                   68.17
+    Low                  No                    66.12
+                         Yes                   66.38
+    Medium               No                    66.42
+                         Yes                   67.15
     Mesatarja e orëve të studiuara sipas llojit të shkollës dhe cilësisë së mësuesit:
                                  Hours_Studied
     School_Type Teacher_Quality               
-    Private     High                     19.76
-                Low                      20.13
+    Private     High                     19.82
+                Low                      20.18
                 Medium                   20.01
-    Public      High                     19.96
-                Low                      19.84
-                Medium                   19.96
+    Public      High                     19.98
+                Low                      19.91
+                Medium                   19.98
 
 
 
@@ -1878,27 +502,29 @@ print("Mesatarja e Pjesëmarrjes sipas cilësisë së mësuesit dhe distanca nga
 print(avg_attendance_by_teacher_quality_and_distance)
 ```
 
+    
     Mesatarja e rezultateve të provimeve dhe orëve të gjumit sipas pjesëmarrjes në aktivitete jashtëkurrikulare: 
                                 Exam_Score  Sleep_Hours
     Extracurricular_Activities                         
-    No                               66.76         7.03
-    Yes                              67.23         7.03
+    No                               66.93         7.03
+    Yes                              67.44         7.03
     Mesatarja e Pjesëmarrjes sipas cilësisë së mësuesit dhe distanca nga shtëpia: 
                                         Attendance
     Teacher_Quality Distance_from_Home            
-    High            Far                      79.68
-                    Moderate                 79.67
-                    Near                     80.19
-    Low             Far                      78.47
-                    Moderate                 80.17
-                    Near                     80.50
-    Medium          Far                      79.42
-                    Moderate                 79.92
-                    Near                     79.98
+    High            Far                      79.70
+                    Moderate                 79.66
+                    Near                     80.30
+    Low             Far                      78.23
+                    Moderate                 80.12
+                    Near                     80.61
+    Medium          Far                      79.48
+                    Moderate                 79.91
+                    Near                     79.97
 
 
 <h3>Mostrimi i të dhënave</h3>
 <p>Mostrimi i të dhënave është procesi i zgjedhjes së një numri të vogël të elementeve nga një grup më i madh për të kryer analiza më të shpejta dhe më ekonomike, pa pasur nevojë të shikojmë të gjitha të dhënat</p>
+
 
 ```python
 # Vizualizimi i marrëdhënies midis Previous Scores, Exam Score dhe Hours Studied pa mostrim
@@ -1913,8 +539,12 @@ plt.grid(True)
 plt.show()
 ```
 
-![png](readme_files/main_27_0.png)
+
     
+![png](readme_files/readme_23_0.png)
+    
+
+
 
 ```python
 # Selektimi i rreshtave të datasetit për mostrim
@@ -1924,6 +554,7 @@ sample_df = pre_df.sample(frac=0.1, random_state=1)
 # random state = 1 sepse e njejta mostër e rastësishme gjenerohet çdo herë kur ekzekutohet kodi.
 # Nëse random_state nuk është përcaktuar, çdo herë që ekzekutohet kodi do të rezultojë në një mostrë ndoshta të ndryshme.
 ```
+
 
 ```python
 # Vizualizimi i marrëdhënies midis Previous Scores, Exam Score dhe Hours Studied me mostrim
@@ -1937,8 +568,13 @@ plt.grid(True)
 plt.show()
 ```
 
-![png](readme_files/main_29_0.png)
+
     
+![png](readme_files/readme_25_0.png)
+    
+
+
+
 ```python
 # Ndarja e orëve të studiuara në kuantilë
 sample_df['study_quantile'] = pd.qcut(sample_df['Hours_Studied'], 4, labels=['Shumë pak', 'Pak', 'Mesatare', 'Shumë'])
@@ -1966,15 +602,15 @@ plt.legend(labels=[f'{level}: {score:.2f}' for level, score in zip(labels, sorte
 plt.show()
 ```
 
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\1428233615.py:5: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
-      study_exam_scores = sample_df.groupby('study_quantile')['Exam_Score'].mean().reset_index(name='Average_Exam_Score')
 
-
-![png](readme_files/main_30_1.png)
     
+![png](readme_files/readme_26_1.png)
+    
+
 
 <h3>Reduktimi i dimensionalitetit</h3>
 <p>Reduktimi i dimensionalitetit është një proces në analizën e të dhënave që përfshin zvogëlimin e numrit të variablave të përdorura në një dataset. Qëllimi është të largohen veçoritë e tepërta ose të pakorrelacionuara pa humbur informacione esenciale.</p>
+
 
 ```python
 # Kontrollojmë strukturën aktuale të DataFrame
@@ -1993,11 +629,12 @@ display(pre_df.head())
 
     Struktura origjinale e DataFrame:
 
-<div>
 
+
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -2147,10 +784,9 @@ display(pre_df.head())
 
 
 <div>
-
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -2288,9 +924,11 @@ display(pre_df.head())
 </table>
 </div>
 
+
 <h3>Zgjedhja e nën-bashkësise të vetive</h3>
 
 <p>Duke përdorur datasetin e ri të gjeneruar, fillojmë me përcaktimin e vetive më të rëndësishme për analizë, duke u fokusuar në ato që janë të lidhura ngushtë me <b>Exam_Score</b>.</p>
+
 
 ```python
 # Zgjedhja e nënbashkësise të vetive
@@ -2325,11 +963,12 @@ display(df_selected_features)
 
     Dataframe me vetitë e zgjedhura:
 
-<div>
 
+
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -2351,93 +990,93 @@ display(df_selected_features)
   <tbody>
     <tr>
       <th>0</th>
-      <td>5.60</td>
-      <td>6.40</td>
+      <td>23</td>
+      <td>84</td>
       <td>Low</td>
       <td>No</td>
-      <td>5.5</td>
-      <td>5.14</td>
+      <td>7</td>
+      <td>73</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>1.00</td>
+      <td>0</td>
       <td>Low</td>
       <td>Medium</td>
       <td>Positive</td>
-      <td>5.5</td>
+      <td>3</td>
       <td>Male</td>
-      <td>3.35</td>
+      <td>67</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>4.77</td>
-      <td>1.90</td>
+      <td>19</td>
+      <td>64</td>
       <td>Low</td>
       <td>No</td>
-      <td>7.0</td>
-      <td>2.62</td>
+      <td>8</td>
+      <td>59</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>3.25</td>
+      <td>2</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Negative</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Female</td>
-      <td>2.17</td>
+      <td>61</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>5.81</td>
-      <td>9.55</td>
+      <td>24</td>
+      <td>98</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>5.5</td>
-      <td>8.38</td>
+      <td>7</td>
+      <td>91</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>3.25</td>
+      <td>2</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Neutral</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Male</td>
-      <td>4.72</td>
+      <td>74</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>6.86</td>
-      <td>7.52</td>
+      <td>29</td>
+      <td>89</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>7.0</td>
-      <td>9.64</td>
+      <td>8</td>
+      <td>98</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>2.12</td>
+      <td>1</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Negative</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Male</td>
-      <td>4.13</td>
+      <td>71</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>4.77</td>
-      <td>8.20</td>
+      <td>19</td>
+      <td>92</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.0</td>
-      <td>3.70</td>
+      <td>6</td>
+      <td>65</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.38</td>
+      <td>3</td>
       <td>Medium</td>
       <td>High</td>
       <td>Neutral</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Female</td>
-      <td>3.93</td>
+      <td>70</td>
     </tr>
     <tr>
       <th>...</th>
@@ -2459,93 +1098,93 @@ display(df_selected_features)
     </tr>
     <tr>
       <th>6602</th>
-      <td>6.02</td>
-      <td>3.02</td>
+      <td>25</td>
+      <td>69</td>
       <td>High</td>
       <td>No</td>
-      <td>5.5</td>
-      <td>5.68</td>
+      <td>7</td>
+      <td>76</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>2.12</td>
+      <td>1</td>
       <td>High</td>
       <td>Medium</td>
       <td>Positive</td>
-      <td>4.0</td>
+      <td>2</td>
       <td>Female</td>
-      <td>3.54</td>
+      <td>68</td>
     </tr>
     <tr>
       <th>6603</th>
-      <td>5.60</td>
-      <td>4.60</td>
+      <td>23</td>
+      <td>76</td>
       <td>High</td>
       <td>No</td>
-      <td>7.0</td>
-      <td>6.58</td>
+      <td>8</td>
+      <td>81</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.38</td>
+      <td>3</td>
       <td>Low</td>
       <td>High</td>
       <td>Positive</td>
-      <td>4.0</td>
+      <td>2</td>
       <td>Female</td>
-      <td>3.74</td>
+      <td>69</td>
     </tr>
     <tr>
       <th>6604</th>
-      <td>4.98</td>
-      <td>7.75</td>
+      <td>20</td>
+      <td>90</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.0</td>
-      <td>3.70</td>
+      <td>6</td>
+      <td>65</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>4.38</td>
+      <td>3</td>
       <td>Low</td>
       <td>Medium</td>
       <td>Negative</td>
-      <td>4.0</td>
+      <td>2</td>
       <td>Female</td>
-      <td>3.54</td>
+      <td>68</td>
     </tr>
     <tr>
       <th>6605</th>
-      <td>2.88</td>
-      <td>6.85</td>
+      <td>10</td>
+      <td>86</td>
       <td>High</td>
       <td>Yes</td>
-      <td>4.0</td>
-      <td>8.38</td>
+      <td>6</td>
+      <td>91</td>
       <td>High</td>
       <td>Yes</td>
-      <td>3.25</td>
+      <td>2</td>
       <td>Low</td>
       <td>Medium</td>
       <td>Positive</td>
-      <td>5.5</td>
+      <td>3</td>
       <td>Female</td>
-      <td>3.54</td>
+      <td>68</td>
     </tr>
     <tr>
       <th>6606</th>
-      <td>3.93</td>
-      <td>2.57</td>
+      <td>15</td>
+      <td>67</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>8.5</td>
-      <td>8.92</td>
+      <td>9</td>
+      <td>94</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>1.00</td>
+      <td>0</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Positive</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Male</td>
-      <td>2.76</td>
+      <td>64</td>
     </tr>
   </tbody>
 </table>
@@ -2556,6 +1195,7 @@ display(df_selected_features)
 <h4>Krijimi i vetive të reja</h4>
 
 <p>Një prej vetive të cilat do të krijojmë është <b>Study_Rating</b> e cila është një prodhim i <b>Hours_Studied</b> dhe <b>Prevous_Scores</b>. Ky atribut do të ndihmoj për të kuptuar se sa efektive janë order e studimit në lidhje me rezultatet e meparshme.</p>
+
 
 ```python
 # Krijimi i vetive të reja
@@ -2570,25 +1210,11 @@ display(df_selected_features[['Hours_Studied', 'Previous_Scores', 'Study_Rating'
     Dataframe pas krijimit të Study_Rating:
 
 
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\1386634999.py:2: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      df_selected_features['Study_Rating'] = (df_selected_features['Hours_Studied'] * df_selected_features['Previous_Scores'] / 3000) * 100 # Maksimumi 30 orë * 100 pikë = 3000
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\1386634999.py:3: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      df_selected_features['Study_Rating'] = df_selected_features['Study_Rating'].apply(lambda x: f"{round(x, 2)}%")
-
 
 <div>
-
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Previous_Scores</th>
@@ -2633,6 +1259,7 @@ display(df_selected_features[['Hours_Studied', 'Previous_Scores', 'Study_Rating'
 
 <p>Një tjetër veti e re do të jetë <b>Activity_Score</b> e cila është një shprehje për të kombinuar disa aktivitete fizike dhe jashtë shkollore. Përdorim <b>Physical_Activity</b> dhe <b>Extracurricular_Activity</b> për të krijuar këtë veti.
 
+
 ```python
 # Krijimi i Activity_Score bazuar në aktivitetet fizike dhe jashtë shkollore
 df_selected_features.loc[:, 'Activity_Score'] = df_selected_features['Physical_Activity'] + df_selected_features['Extracurricular_Activities'].apply(lambda x: 1 if x == 'Yes' else 0)
@@ -2645,20 +1272,10 @@ display(df_selected_features[['Physical_Activity', 'Extracurricular_Activities',
     Dataframe pas krijimit të Activity_Score:
 
 
-    C:\Users\Lirim Islami\AppData\Local\Temp\ipykernel_15668\2572682965.py:2: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-    
-    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      df_selected_features.loc[:, 'Activity_Score'] = df_selected_features['Physical_Activity'] + df_selected_features['Extracurricular_Activities'].apply(lambda x: 1 if x == 'Yes' else 0)
-
-
-
 <div>
-
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Physical_Activity</th>
       <th>Extracurricular_Activities</th>
@@ -2722,11 +1339,11 @@ display(df_selected_features[['Sleep_Hours', 'Sleep_Binary']].head())
     Dataframe pas binarizimit të Sleep_Hours:
 
 
-<div>
 
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Sleep_Hours</th>
       <th>Sleep_Binary</th>
@@ -2779,11 +1396,11 @@ display(df_selected_features[['Family_Income', 'Income_Binary']].head())
     Dataframe pas binarizimit të Family_Income:
 
 
-<div>
 
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Family_Income</th>
       <th>Income_Binary</th>
@@ -2822,6 +1439,7 @@ display(df_selected_features[['Family_Income', 'Income_Binary']].head())
 
 <h3>Kontrollimi i të dhënave të reja</h3>
 
+
 ```python
 # Shikoni strukturën e re të dataframe-it
 print("Dataframe pas krijimit të vetive të reja:")
@@ -2830,11 +1448,12 @@ display(df_selected_features.head())
 
     Dataframe pas krijimit të vetive të reja:
 
-<div>
 
+
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -2851,164 +1470,144 @@ display(df_selected_features.head())
       <th>Physical_Activity</th>
       <th>Gender</th>
       <th>Exam_Score</th>
-      <th>Hours_Studied_Binned</th>
-      <th>Sleep_Hours_Binned</th>
-      <th>Previous_Scores_Binned</th>
+      <th>Sleep_Binary</th>
+      <th>Income_Binary</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>5.60</td>
-      <td>6.40</td>
+      <td>23</td>
+      <td>84</td>
       <td>Low</td>
       <td>No</td>
-      <td>5.5</td>
-      <td>5.14</td>
+      <td>7</td>
+      <td>73</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>1.00</td>
+      <td>0</td>
       <td>Low</td>
       <td>Medium</td>
       <td>Positive</td>
-      <td>5.5</td>
+      <td>3</td>
       <td>Male</td>
-      <td>3.35</td>
-      <td>Low</td>
-      <td>Very Low</td>
-      <td>Low</td>
+      <td>67</td>
+      <td>1</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>4.77</td>
-      <td>1.90</td>
+      <td>19</td>
+      <td>64</td>
       <td>Low</td>
       <td>No</td>
-      <td>7.0</td>
-      <td>2.62</td>
+      <td>8</td>
+      <td>59</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>3.25</td>
+      <td>2</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Negative</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Female</td>
-      <td>2.17</td>
-      <td>Low</td>
-      <td>Adequate</td>
-      <td>Low</td>
+      <td>61</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>5.81</td>
-      <td>9.55</td>
+      <td>24</td>
+      <td>98</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>5.5</td>
-      <td>8.38</td>
+      <td>7</td>
+      <td>91</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>3.25</td>
+      <td>2</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Neutral</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Male</td>
-      <td>4.72</td>
-      <td>Low</td>
-      <td>Very Low</td>
-      <td>Low</td>
+      <td>74</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>6.86</td>
-      <td>7.52</td>
+      <td>29</td>
+      <td>89</td>
       <td>Low</td>
       <td>Yes</td>
-      <td>7.0</td>
-      <td>9.64</td>
+      <td>8</td>
+      <td>98</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>2.12</td>
+      <td>1</td>
       <td>Medium</td>
       <td>Medium</td>
       <td>Negative</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Male</td>
-      <td>4.13</td>
-      <td>Low</td>
-      <td>Adequate</td>
-      <td>Low</td>
+      <td>71</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>4.77</td>
-      <td>8.20</td>
+      <td>19</td>
+      <td>92</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.0</td>
-      <td>3.70</td>
+      <td>6</td>
+      <td>65</td>
       <td>Medium</td>
       <td>Yes</td>
-      <td>4.38</td>
+      <td>3</td>
       <td>Medium</td>
       <td>High</td>
       <td>Neutral</td>
-      <td>7.0</td>
+      <td>4</td>
       <td>Female</td>
-      <td>3.93</td>
-      <td>Low</td>
-      <td>Very Low</td>
-      <td>Low</td>
+      <td>70</td>
+      <td>0</td>
+      <td>1</td>
     </tr>
   </tbody>
 </table>
 </div>
 
 
+
 <h3>Normalizimi</h3>
 
+
 ```python
-# Definimi i kolonave numerike
-# numerical_columns = pre_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-
-# Inicializimi StandardScaler me vlerat [0, 1]
-# scaler = StandardScaler()
-
-# Normalizojmë kolonat numerike
-# pre_df[numerical_columns] = scaler.fit_transform(pre_df[numerical_columns])
-
-# Shfaqim disa rreshta nga dataframe pas normalizimit
-# print("Dataframe pas normalizimit të kolonave numerike:")
-# display(pre_df[numerical_columns].head())
-
-# -------------------------------------------------------------------------------------
-
-# Definimi i MinMaxScaler me kufijtë 1 dhe 10
 scaler = MinMaxScaler(feature_range=(1, 10))
 
-# Zgjedhja e kolonave numerike
-numerical_columns = pre_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+# Select numerical columns
+numerical_columns = main_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
 
-# Aplikimi i MinMaxScaler për kolonat numerike
-pre_df[numerical_columns] = scaler.fit_transform(pre_df[numerical_columns])
-pre_df[numerical_columns] = pre_df[numerical_columns].round(2)
+# Create a temporary DataFrame for normalized display
+temp_normalized_df = main_df[numerical_columns].copy()
+temp_normalized_df[numerical_columns] = scaler.fit_transform(temp_normalized_df[numerical_columns])
+temp_normalized_df = temp_normalized_df.round(2)
 
-# Shfaqim disa rreshta nga dataframe pas normalizimit
-print("Dataframe pas normalizimit të kolonave numerike: ")
-display(pre_df[numerical_columns].head())
-
+# Display the normalized data without changing the original main_df
+print("Dataframe pas normalizimit për qëllime shfaqjeje: ")
+display(temp_normalized_df.head())
 ```
 
-    Dataframe pas normalizimit të kolonave numerike: 
+    Dataframe pas normalizimit për qëllime shfaqjeje: 
+
 
 
 <div>
-
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -3053,7 +1652,7 @@ display(pre_df[numerical_columns].head())
     <tr>
       <th>3</th>
       <td>6.86</td>
-      <td>7.52</td>
+      <td>7.53</td>
       <td>7.0</td>
       <td>9.64</td>
       <td>2.12</td>
@@ -3073,7 +1672,6 @@ display(pre_df[numerical_columns].head())
   </tbody>
 </table>
 </div>
-
 
 
 <h3>Diskretizimi</h3>
@@ -3119,12 +1717,10 @@ display(df_selected_features[['Hours_Studied', 'Hours_Studied_Binned', 'Sleep_Ho
 
     Dataframe pas diskretizimit:
 
-
 <div>
-
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Hours_Studied_Binned</th>
@@ -3137,53 +1733,52 @@ display(df_selected_features[['Hours_Studied', 'Hours_Studied_Binned', 'Sleep_Ho
   <tbody>
     <tr>
       <th>0</th>
-      <td>5.60</td>
-      <td>Low</td>
-      <td>5.5</td>
-      <td>Very Low</td>
-      <td>5.14</td>
-      <td>Low</td>
+      <td>23</td>
+      <td>High</td>
+      <td>7</td>
+      <td>Adequate</td>
+      <td>73</td>
+      <td>Medium</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>4.77</td>
-      <td>Low</td>
-      <td>7.0</td>
-      <td>Adequate</td>
-      <td>2.62</td>
+      <td>19</td>
+      <td>Medium</td>
+      <td>8</td>
+      <td>High</td>
+      <td>59</td>
       <td>Low</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>5.81</td>
-      <td>Low</td>
-      <td>5.5</td>
-      <td>Very Low</td>
-      <td>8.38</td>
-      <td>Low</td>
+      <td>24</td>
+      <td>High</td>
+      <td>7</td>
+      <td>Adequate</td>
+      <td>91</td>
+      <td>Very High</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>6.86</td>
-      <td>Low</td>
-      <td>7.0</td>
-      <td>Adequate</td>
-      <td>9.64</td>
-      <td>Low</td>
+      <td>29</td>
+      <td>High</td>
+      <td>8</td>
+      <td>High</td>
+      <td>98</td>
+      <td>Very High</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>4.77</td>
+      <td>19</td>
+      <td>Medium</td>
+      <td>6</td>
       <td>Low</td>
-      <td>4.0</td>
-      <td>Very Low</td>
-      <td>3.70</td>
-      <td>Low</td>
+      <td>65</td>
+      <td>Medium</td>
     </tr>
   </tbody>
 </table>
 </div>
-
 
 
 <h3>Transformimi</h3>
@@ -3201,11 +1796,11 @@ display(df_transformed.head())
     Dataframe pas transformimit:
 
 
-<div>
 
+<div>
 <table border="1" class="dataframe">
   <thead>
-    <tr >
+    <tr style="text-align: right;">
       <th></th>
       <th>Hours_Studied</th>
       <th>Attendance</th>
@@ -3357,32 +1952,31 @@ display(df_transformed.head())
 </div>
 
 
-
-
 <h2>2. FAZA E DYTË</h2>
 
-
 Në këtë fazë, do të përqendrohemi në detektimin e përjashtuesve për të identifikuar dhe përjashtuar të dhënat që devijojnë dhe mund të ndikojnë në analizën e këtij dataseti. Gjithashtu, do të mënjanojmë zbulimet jo të sakta për të ruajtur cilësinë e të dhënave dhe saktësinë e rezultateve. Eksplorimi i të dhënave do të përfshijë statistika përmbledhëse dhe analiza të ndryshme për të nxjerrë njohuri kyçe mbi strukturën e datasetit.
+
+<h3>Identifikimi dhe visualizimi i anomalive (point anomaly)</h3>
 
 
 ```python
 # Zgjidhen vetëm kolonat numerike nga dataseti
-numeric_columns = pre_df.select_dtypes(include=['float64', 'int64']).columns
-numeric_data = pre_df[numeric_columns]
+numeric_columns = main_df.select_dtypes(include=['float64', 'int64']).columns
+numeric_data = main_df[numeric_columns]
 
 # Inicializimi i Isolation Forest
 iso_forest = IsolationForest(contamination=0.05, random_state=42)
-pre_df['Anomali'] = iso_forest.fit_predict(numeric_data)
+main_df['Anomali'] = iso_forest.fit_predict(numeric_data)
 
 # Ndarja e anomalive dhe i të dhënave normale për vizualizim
-normal_data = pre_df[pre_df['Anomali'] == 1]
-anomalies = pre_df[pre_df['Anomali'] == -1]
+normal_data = main_df[main_df['Anomali'] == 1]
+anomalies = main_df[main_df['Anomali'] == -1]
 
 sns.set_theme(style='whitegrid')
 
 # Vizualizimi i Pair Plot
 plt.figure(figsize=(12, 8))
-sns.pairplot(pre_df, hue='Anomali', palette={1: 'blue', -1: 'red'}, diag_kind='kde', markers=["o", "s"])
+sns.pairplot(main_df, hue='Anomali', palette={1: 'blue', -1: 'red'}, diag_kind='kde', markers=["o", "s"])
 plt.suptitle('Pair Plot per detektimin e anomalive', y=1.02)
 plt.show()
 
@@ -3397,20 +1991,372 @@ plt.title('Detektimi i anomalive në dataset:')
 plt.xlabel('Index')
 plt.ylabel('Vlera')
 plt.show()
-
 ```
-
 
     <Figure size 1200x800 with 0 Axes>
 
-
-
+![png](readme_files/readme_50_1.png)
     
-![png](readme_files/main_53_1.png)
-    
-![png](readme_files/main_53_2.png)
+![png](readme_files/readme_50_2.png)
 
-<h3> Analiza e Skewness në të dhënat </h3>
+<h3>Identifikimi i outliers me DBSCAN Clustering</h3>
+
+<p><b>DBSCAN (Density-Based Spatial Clustering of Applications with Noise)</b> është një algoritëm klasterizimi i bazuar në dendësi, i cili mund të përdoret për të identifikuar outliers si pjesë e procesit të tij. Në vend që të përdorë distancat absolute ose statistikat si Z-score, DBSCAN identifikon outliers duke analizuar dendësinë e të dhënave.</p>
+
+```python
+# Zgjedhim kolonat numerike
+numerical_columns = ['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Tutoring_Sessions', 'Exam_Score']
+data_numerical = main_df[numerical_columns]
+
+# Standardizojmë të dhënat për performancë më të mirë të DBSCAN
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_numerical)
+
+# Vendosim parametrat e DBSCAN
+dbscan = DBSCAN(eps=0.5, min_samples=5)
+
+# Aplikojmë DBSCAN për të krijuar grupime
+clusters = dbscan.fit_predict(data_scaled)
+
+# Shtojmë grupet tek dataframe origjinale për vizualizim më të mirë
+main_df['Cluster'] = clusters
+
+# Krijimi i boxplot për çdo kolonë numerike të grupuar sipas klustereve
+fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(15, 12))
+
+for ax, column in zip(axes.flatten(), numerical_columns):
+    main_df.boxplot(column=column, by='Cluster', ax=ax)
+    ax.get_figure().suptitle('Boxplotet e karakteristikave numerike sipas klustereve DBSCAN', fontsize=16)
+    ax.set_title(column)
+    ax.set_xlabel('Klusteri')
+    ax.set_ylabel(column)
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.show()
+```
+
+![png](readme_files/readme_53_0.png)
+
+<h3>Identifikimi i outliers me KMeans Clustering</h3>
+<p><b>KMeans</b> është një algoritëm i thjeshtë dhe efektiv (unsupervised learning) që ndan një sasi të dhënash në një numër të caktuar paraprakisht të klustereve (grupeve). Qëllimi i algoritmit është të grupojë pikat e të dhënave në mënyrë që brenda një grupi pikat të jenë sa më të ngjashme me njëra-tjetrën, dhe ndërmjet grupeve të ndryshme të jenë sa më të ndryshme.</p>
+
+```python
+features = main_df[['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Tutoring_Sessions', 'Exam_Score']]
+
+# Trajnojmë KMeans me një numër të caktuar të grupeve
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(features)
+
+# Llogarisim distancat nga qendrat e grupeve për çdo pikë
+distances = kmeans.transform(features)
+min_distance = np.min(distances, axis=1)
+
+# Vendosim një prag për të identifikuar outliers bazuar në distancë
+threshold = np.percentile(min_distance, 90)  # Pikat me 10% të distancave më të larta konsiderohen si outliers
+main_df['Outlier'] = min_distance > threshold
+
+# Caktojmë një kolonë të re për ngjyrën në pairplot
+main_df['Type'] = 'Normal'
+main_df.loc[main_df['Outlier'], 'Type'] = 'Outlier'
+
+# Përdorim pairplot të Seaborn për të vizualizuar marrëdhëniet dhe shpërndarjet
+pairplot = sns.pairplot(main_df, vars=['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Tutoring_Sessions', 'Exam_Score'], 
+                        hue='Type', palette={'Normal': 'blue', 'Outlier': 'red'}, 
+                        plot_kws={'alpha': 0.6, 's': 30, 'edgecolor': 'k'}, 
+                        diag_kind='kde', diag_kws={'fill': True})
+
+pairplot.fig.suptitle('Pairplot me Outliers të identifikuara nga KMeans', y=1.02)
+plt.show()  
+
+```
+
+![png](readme_files/readme_55_0.png)
+
+<h3>Detektimi dhe pastrimi i outliers me metodën Z-Score</h3>
+<p>Outliers janë vlera që dallojnë ndjeshëm nga shumica e të dhënave në një dataset. Ato mund të jenë gabime ose vlera të rralla, dhe mund të ndikojnë negativisht në analizën statistike ose trajnimin e modeleve. Z-Score (ose standard score) është një masë statistikore që tregon sa larg është një vlerë nga mesatarja, duke përdorur devijimin standard si njësi. 
+</p>
+
+
+```python
+# Zgjedh vetëm kolonat numerike për zbulimin e outliers
+numerical_data = pre_df.select_dtypes(include=['int64', 'float64'])
+
+# Llogarit Z-Score
+z_scores = np.abs(zscore(numerical_data))
+threshold = 3  # Kufiri bazë për zbulimin e outliers
+
+# Identifikon rreshtat me Z-Score më të madhe se kufiri
+outliers = (z_scores > threshold).any(axis=1)
+
+# Numëron sa outliers u identifikuan
+num_outliers = outliers.sum()
+print(f"Numri i outliers që janë identifikuar: {num_outliers}")
+
+# Eleminon outliers nga dataseti origjinal
+pre_df = pre_df[~outliers]
+
+# Visualizimi i shpërndarjes së të dhënave numerike dhe identifikimi i outliers me anë të Boxplot
+plt.figure(figsize=(12, 6))
+sns.boxplot(data=numerical_data)
+plt.title('Box Plot i të dhënave numerike me outliers')
+
+plt.figure(figsize=(12, 6))
+sns.boxplot(data=pre_df)
+plt.title('Box Plot i të dhënave numerike pa outliers')
+plt.show()
+```
+
+    Numri i outliers që janë identifikuar: 101
+
+![png](readme_files/readme_57_1.jpg)
+    
+![png](readme_files/readme_57_2.jpg)
+
+<h3>Detektimi nga noisy data me metodën IQR</h3>
+
+```python
+# Zgjedhja e kolonave numerike për zbulimin e të dhënave me zhurmë
+numerical_columns = ['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Exam_Score']
+
+# Funksioni për të llogaritur të dhënat me zhurmë bazuar në pragun e IQR
+def detect_noisy_data(df, column, multiplier=3):
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - multiplier * IQR  # Kufiri më i rreptë
+    upper_bound = Q3 + multiplier * IQR
+    noisy_data = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
+    return noisy_data, lower_bound, upper_bound
+
+# Cikli i përmirësuar për zbulim
+noisy_data_summary = {}
+
+for col in numerical_columns:
+    noisy_data, lower, upper = detect_noisy_data(pre_df, col, multiplier=3)
+    noisy_data_summary[col] = {
+        'Lower Bound': lower,
+        'Upper Bound': upper,
+        'Number of Noisy Data Points': len(noisy_data),
+        'Noisy Data Values': noisy_data[col].tolist()
+    }
+
+# Konvertimi i përmbledhjes në një DataFrame
+noisy_data_summary_df = pd.DataFrame(noisy_data_summary).T
+
+# Shfaqja e përmbledhjes
+print(noisy_data_summary_df)
+
+```
+
+                    Lower Bound Upper Bound Number of Noisy Data Points  \
+    Hours_Studied          -8.0        48.0                           0   
+    Attendance             10.0       150.0                           0   
+    Sleep_Hours             0.0        14.0                           0   
+    Previous_Scores        -9.0       159.0                           0   
+    Exam_Score             53.0        81.0                           0   
+    
+                    Noisy Data Values  
+    Hours_Studied                  []  
+    Attendance                     []  
+    Sleep_Hours                    []  
+    Previous_Scores                []  
+    Exam_Score                     []  
+
+
+<h3>Ngjashmëritë e të dhënave</h3>
+
+<p>Analiza e ngjashmërive të të dhënave përfshin krahasimin e vlerave brenda dataset-it për të identifikuar modele, grupe të ngjashme ose tipare të përbashkëta. Kjo analizë përdoret për të zbuluar marrëdhënie të fshehura midis elementëve të ndryshëm të dataset-it, duke u bazuar në karakteristikat e tyre numerike ose kategorike.</p>
+
+
+```python
+# Zgjedhja e të dhënave numerike nga dataseti
+numeric_data = pre_df.select_dtypes(include=['number'])
+categorical_data = pre_df.select_dtypes(exclude=['number'])
+
+# 1. Analiza e të dhënave numerike
+# a. Analiza e korrelacionit
+print("Matrica e korrelacionit:")
+correlation_matrix = numeric_data.corr()
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", square=True)
+plt.title("Matrica e korrelacionit")
+plt.show()
+
+# b. PCA për vizualizim
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(numeric_data.fillna(0))
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(scaled_data)
+
+plt.figure(figsize=(10, 6))
+plt.scatter(pca_result[:, 0], pca_result[:, 1], alpha=0.7, edgecolor='k')
+plt.title("PCA: Vizualizimi i të dhënave numerike")
+plt.xlabel("Komponenti kryesor 1")
+plt.ylabel("Komponenti kryesor 2")
+plt.show()
+
+# 2. Analiza e të dhënave kategorike
+# a. Shpërndarja e frekuencës
+print("\nShpërndarja e frekuencës së të dhënave kategorike (në përqindje):")
+for col in categorical_data.columns:
+    print(f"\nKolona: {col}")
+    
+    # Përqindjet për secilën kategori
+    freq_percent = categorical_data[col].value_counts(normalize=True) * 100
+    print(freq_percent)
+    
+    # Vizualizimi i shpërndarjes së frekuencës
+    freq_percent.plot(kind='bar', figsize=(8, 4), color='skyblue', edgecolor='black')
+    plt.title(f"Shpërndarja e frekuencës së {col} (në %)")
+    plt.xlabel(col)
+    plt.ylabel("Përqindja (%)")
+    plt.xticks(rotation=45)
+    plt.show()
+
+
+# 3. Analiza e grumbullimit (clustering)
+# Grumbullimi hierarkik
+linkage_matrix = linkage(scaled_data, method='ward')
+
+plt.figure(figsize=(10, 6))
+dendrogram(linkage_matrix, leaf_rotation=90., leaf_font_size=10.)
+plt.title("Dendrogrami i grumbullimit hierarkik")
+plt.xlabel("Indeksi i shembullit")
+plt.ylabel("Distanca")
+plt.show()
+
+# 4. Përmbledhje
+# Shfaq statistikat përmbledhëse për të dhënat numerike
+print("\nStatistikat përmbledhëse për të dhënat Numerike:")
+print(numeric_data.describe().transpose())
+
+```
+
+    Matrica e korrelacionit:
+
+![png](readme_files/readme_61_1.png)
+    
+![png](readme_files/readme_61_2.png)
+    
+    Shpërndarja e frekuencës së të dhënave kategorike (në përqindje):
+    
+    Kolona: Parental_Involvement
+    Parental_Involvement
+    Medium    51.091300
+    High      28.727329
+    Low       20.181371
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_4.png)
+ 
+    Kolona: Extracurricular_Activities
+    Extracurricular_Activities
+    Yes    59.652628
+    No     40.347372
+    Name: proportion, dtype: float64
+    
+![png](readme_files/readme_61_6.png)
+    
+    Kolona: Motivation_Level
+    Motivation_Level
+    Medium    50.722410
+    Low       29.357516
+    High      19.920074
+    Name: proportion, dtype: float64
+    
+![png](readme_files/readme_61_8.png)
+    
+    Kolona: Internet_Access
+    Internet_Access
+    Yes    92.45312
+    No      7.54688
+    Name: proportion, dtype: float64
+    
+![png](readme_files/readme_61_10.png)
+    
+    Kolona: Family_Income
+    Family_Income
+    Medium    40.439594
+    Low       40.347372
+    High      19.213034
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_12.png)
+  
+    Kolona: Teacher_Quality
+    Teacher_Quality
+    Medium    60.697817
+    High      29.342146
+    Low        9.960037
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_14.png)
+    
+    Kolona: School_Type
+    School_Type
+    Public     69.581924
+    Private    30.418076
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_16.png)
+    
+    Kolona: Peer_Influence
+    Peer_Influence
+    Positive    39.963111
+    Neutral     39.271442
+    Negative    20.765447
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_18.png)
+    
+    Kolona: Learning_Disabilities
+    Learning_Disabilities
+    No     89.517369
+    Yes    10.482631
+    Name: proportion, dtype: float64
+    
+![png](readme_files/readme_61_20.png)
+    
+    Kolona: Parental_Education_Level
+    Parental_Education_Level
+    High School     50.076852
+    College         30.095297
+    Postgraduate    19.827851
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_22.png)
+    
+    Kolona: Distance_from_Home
+    Distance_from_Home
+    Near        59.806333
+    Moderate    30.295112
+    Far          9.898555
+    Name: proportion, dtype: float64
+
+![png](readme_files/readme_61_24.png)
+  
+    Kolona: Gender
+    Gender
+    Male      57.792807
+    Female    42.207193
+    Name: proportion, dtype: float64
+    
+![png](readme_files/readme_61_26.png)
+    
+![png](readme_files/readme_61_27.png)
+    
+    Statistikat përmbledhëse për të dhënat Numerike:
+                        count       mean        std   min   25%   50%   75%    max
+    Hours_Studied      6506.0  19.945589   5.878408   3.0  16.0  20.0  24.0   37.0
+    Attendance         6506.0  79.956502  11.540209  60.0  70.0  80.0  90.0  100.0
+    Sleep_Hours        6506.0   7.031817   1.467056   4.0   6.0   7.0   8.0   10.0
+    Previous_Scores    6506.0  75.051645  14.387867  50.0  63.0  75.0  87.0  100.0
+    Tutoring_Sessions  6506.0   1.473870   1.195306   0.0   1.0   1.0   2.0    5.0
+    Physical_Activity  6506.0   2.968952   1.028998   0.0   2.0   3.0   4.0    6.0
+    Exam_Score         6506.0  67.042883   3.312127  56.0  65.0  67.0  69.0   78.0
+
+
+<h3>Analiza e Skewness në të dhënat</h3>
 <p>Në këtë pjesë, tregojm mënyrën e analizës së shpërndarjeve të të dhënave jo-simetrike, duke përdorur një shembull me të dhëna të shtrembëruara. Ky lloj shpërndarjeje është shpesh karakteristik për të dhënat reale dhe mund të ndikojë në përdorimin e teknikave statistikore</p>
 
 ```python
@@ -3421,49 +2367,171 @@ skewness = numeric_data.skew()  # Llogarit shtrembërimin
 positive_skew = skewness[skewness > 0]  # Kolonat me shtrembërim pozitiv
 negative_skew = skewness[skewness < 0]  # Kolonat me shtrembërim negativ
 
-# Krijon një grafik për çdo kolone numerike
+# Krijon një grafik për çdo kolonë numerike
 fig, axes = plt.subplots(nrows=len(numeric_data.columns), ncols=1, figsize=(10, 5 * len(numeric_data.columns)))
 
-if len(numeric_data.columns) == 1:  # Siguron që 'axes' të jetë lista kur ka vetëm një kolone
-axes = [axes]
+if len(numeric_data.columns) == 1:  # Siguron që 'axes' të jetë lista kur ka vetëm një kolonë
+    axes = [axes]
 
-# Krijon histogram dhe vizaton mesataren dhe medianën për secilën kolone
+# Krijon histogram dhe vizaton mesataren dhe medianën për secilën kolonë
 for ax, column in zip(axes, numeric_data.columns):
-numeric_data[column].hist(ax=ax, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
-ax.set_title(f"{column} (Skewness: {skewness[column]:.2f})", fontsize=14)
-ax.axvline(numeric_data[column].mean(), color='red', linestyle='dashed', linewidth=1, label="Mean")
-ax.axvline(numeric_data[column].median(), color='green', linestyle='dashed', linewidth=1, label="Median")
-ax.legend()
+    data = numeric_data[column]
+    mode_values = data.mode()
+    
+    # Histogrami
+    data.hist(ax=ax, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
+    
+    # Vizato një lakore të shpërndarjes normale
+    mu, std = norm.fit(data)  # Llogarit parametrat e shpërndarjes normale
+    xmin, xmax = ax.get_xlim()  # Merr kufijtë e x të axes për të plotësuar lakorën gjatë të gjithë gamës
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mu, std)
+    ax.plot(x, p * max(data.value_counts()) / max(p), 'orange', linewidth=2)  # Skalon lakorën për të përputhur me histogramin
+
+    ax.set_title(f"{column} (Shtrembërimi: {skewness[column]:.2f})", fontsize=14)
+    ax.axvline(mode_values[0], color='purple', linestyle='dashed', linewidth=1, label="Mode")
+    ax.axvline(data.median(), color='green', linestyle='dashed', linewidth=1, label="Median")
+    ax.axvline(data.mean(), color='red', linestyle='dashed', linewidth=1, label="Mean")
+    ax.legend()
 
 plt.tight_layout()  # Siguron që grafiku të jetë i organizuar mirë
 plt.show()  # Shfaq grafikun
+
 ```
 
-<h5>Hours Studied</h5>
+![png](readme_files/readme_63_0.png)
+    
+<h3>Analiza e SMOTE (Synthetic Minority Over-sampling Technique) Algoritmit</h3>
+<p>Synthetic Minority Oversampling Technique (SMOTE) është një teknikë statistikore për rritjen e numrit të rasteve në grup të të dhënave në mënyrë të balancuar. Kjo teknikë mund të përmirësojë pastrimin e të dhënave për të dhënat e çekuilibruara duke gjeneruar mostra sintetike për klasën e pakicës. Kjo teknikë krijon mostra të reja artificiale duke interpoluar midis mostrave ekzistuese të klasës së pakicës, duke balancuar kështu grupin e të dhënave</p>
 
-![png](readme_files/main_54_1.png)
+```python
+# Kategorizimi i 'Exam_Score' në klasa
+main_df['Score_Category'] = pd.cut(main_df['Exam_Score'], bins=[0, 59, 80, 100], labels=['Low', 'Medium', 'High'])
 
-<h5>Attendance</h5>
+# Identifikimi i kolonave kategorike dhe numerike
+categorical_cols = main_df.select_dtypes(include=['object', 'category']).columns
+numerical_cols = main_df.select_dtypes(include=['int64', 'float64']).columns
 
-![png](readme_files/main_54_2.png)
+# Plotësimi i vlerave të munguar për kolonat kategorike me modën
+for col in categorical_cols:
+    main_df[col] = main_df[col].fillna(main_df[col].mode()[0])
 
-<h5>Sleep Hours</h5>
+# Plotësimi i vlerave të munguar për kolonat numerike me medianën
+main_df[numerical_cols] = main_df[numerical_cols].fillna(main_df[numerical_cols].median())
 
-![png](readme_files/main_54_3.png)
+# Kodimi i variablave kategorike duke përdorur Label Encoder
+label_encoders = {}
+for col in categorical_cols:
+    le = LabelEncoder()
+    main_df[col] = le.fit_transform(main_df[col].astype(str))
+    label_encoders[col] = le
 
-<h5>Previous Scores</h5>
+# Definimi i veçorive dhe objektivit
+X = main_df.drop(['Exam_Score', 'Score_Category'], axis=1)
+y = main_df['Score_Category']
 
-![png](readme_files/main_54_4.png)
+# Kontrollimi i balancës para aplikimit të SMOTE
+class_counts_before = y.value_counts()
+print("Shpërndarja e klasës para algoritmit SMOTE:")
+print(class_counts_before)
 
-<h5>Tutoring Sessions</h5>
+# Aplikimi i SMOTE për të balancuar datasetin
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X, y)
 
-![png](readme_files/main_54_5.png)
+# Kontrollimi i balancës pas aplikimit të SMOTE
+class_counts_after = pd.Series(y_resampled).value_counts()
+print("\nShpërndarja e klasës pas algoritmit SMOTE:")
+print(class_counts_after)
 
-<h5>Physical Activity</h5>
+# Shfaqja e balancës para dhe pas aplikimit të SMOTE
+fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 
-![png](readme_files/main_54_6.png)
+# Para SMOTE
+class_counts_before.plot(kind='bar', color='lightcoral', ax=ax[0])
+ax[0].set_title('Balanci i kategorive para algoritmit SMOTE')
+ax[0].set_xlabel('Kategoritë e rezultatit')
+ax[0].set_ylabel('Numri')
+for i, v in enumerate(class_counts_before):
+    ax[0].text(i, v + 1, str(v), ha='center')
 
-<h5>Exam Score</h5>
+# Pas SMOTE
+class_counts_after.plot(kind='bar', color='skyblue', ax=ax[1])
+ax[1].set_title('Balanci i kategorive pas algoritmit SMOTE')
+ax[1].set_xlabel('Kategoritë e rezultatit')
+ax[1].set_ylabel('Numri')
+for i, v in enumerate(class_counts_after):
+    ax[1].text(i, v + 1, str(v), ha='center')
 
-![png](readme_files/main_54_7.png)    
+plt.tight_layout()
+plt.show()
+```
 
+    Shpërndarja e klasës para algoritmit SMOTE:
+    Score_Category
+    2    6497
+    1      68
+    0      42
+    Name: count, dtype: int64
+    
+    Shpërndarja e klasës pas algoritmit SMOTE:
+    Score_Category
+    2    6497
+    0    6497
+    1    6497
+    Name: count, dtype: int64
+    
+![png](readme_files/readme_65_1.png)
+    
+<h3>ADASYN (Adaptive Synthetic Sampling Approach) </h3>
+<p>ADASYN (Adaptive Synthetic Sampling Approach) është një metodë për trajtimin e problemeve të balancimit të klasave në të dhënat e mësimit. Kjo metodë është shumë e ngjashme me SMOTE, por shton një hap shtesë që rregullon numrin e mostrave sintetike që duhen gjeneruar për secilën mostrë të klasës minoritare në varësi të nivelit të tyre të vështirësisë së mësimdhënies.</p>
+
+```python
+# Shto kolonën Exam_Result bazuar në Exam_Score për kategorizimin kalim/dështim
+pre_df['Exam_Result'] = pre_df['Exam_Score'].apply(lambda x: 'Pass' if x >= 67 else 'Fail')
+
+# Përgatisni veçoritë dhe objektivin
+features = pre_df.drop(['Exam_Score', 'Exam_Result'], axis=1)
+target = pre_df['Exam_Result']
+
+# Kodimi i veçoritë kategorike
+categorical_features = ['Parental_Involvement', 'Extracurricular_Activities', 
+                        'Motivation_Level', 'Internet_Access', 'Family_Income', 'Teacher_Quality', 
+                        'School_Type', 'Peer_Influence', 'Learning_Disabilities', 
+                        'Parental_Education_Level', 'Distance_from_Home', 'Gender']
+for feature in categorical_features:
+    le = LabelEncoder()
+    features[feature] = le.fit_transform(features[feature])
+
+# Inicializimi 
+# YN
+adasyn = ADASYN(random_state=42)
+
+# Aplikimi ADASYN
+features_balanced, target_balanced = adasyn.fit_resample(features, target)
+
+# Krijimi një DataFrame për vizualizim
+visualization_df = pd.DataFrame(features_balanced, columns=features.columns)
+visualization_df['Exam_Result'] = target_balanced
+
+# Konvertimi i veçoritë numerike për vizualizim më të mirë
+numeric_features = ['Hours_Studied', 'Attendance', 'Sleep_Hours', 'Previous_Scores', 'Tutoring_Sessions', 'Physical_Activity']
+
+# Shtimi i veçorisë së objektivit dhe krijimi i pairplot
+numeric_features_with_result = numeric_features + ['Exam_Result']
+pairplot = sns.pairplot(visualization_df[numeric_features_with_result], hue='Exam_Result', 
+                        palette={'Pass': 'green', 'Fail': 'red'}, 
+                        diag_kind='kde', markers=['o', 's'])
+
+pairplot.fig.suptitle('Pairplot i veçorive numerike sipas rezultatit të provimit', y=1.02)
+plt.show()
+
+```
+![png](readme_files/readme_67_0.png)
+    
+<h3>Ruajtja e datasetit pas preprocesimit në një spreadsheet të ri</h3>
+<p>Dataseti i përpunuar do të ruhet në një spreadsheet të ri për të siguruar integritetin dhe gatishmërinë e tij për analiza dhe visualizime të mëtejshme.</p>
+
+```python
+pre_df.to_csv('../dataset/StudentPerformanceFactors_new.csv', index=False)
+```
