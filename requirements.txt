@@ -7,3 +7,4 @@ matplotlib
 seaborn
 imbalanced-learn
 streamlit
+plotly

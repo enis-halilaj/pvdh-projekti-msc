@@ -8,6 +8,7 @@ import seaborn as sns
 from io import BytesIO
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder
+import plotly.express as px
 
 
 def download_plot(fig, filename):
@@ -37,6 +38,7 @@ page = st.sidebar.radio(
     "Go to:", 
     [
         "Intro",
+        "Interactive Chart",
         "Preprocessed Data Quality",
         "Outliers", 
         "Frequency Distribution", 
@@ -44,7 +46,8 @@ page = st.sidebar.radio(
         "Correlation Analysis", 
         "3D Surface Plot", 
         "Comparison",
-        "Class Imbalance"
+        "Class Imbalance",
+        "Insights and Visualizations"
     ]
 )
 
@@ -73,6 +76,8 @@ if page == "Intro":
 
         For this project, we used the following dataset: **[Student Performance Factors](https://www.kaggle.com/datasets/lainguyn123/student-performance-factors)**
 
+        <p>The purpose of preprocessing the dataset <b>Student Performance Factors</b> is to structure and clean the data, enabling deep analysis of factors influencing academic performance. This process ensures that the data is clean, organized, and ready to reveal key relationships affecting students' success. Through this processed data analysis, effective educational strategies can be identified and implemented to improve students' achievements and elevate the quality of educational processes.</p>
+
         ## Instructions to Run the Project  
         To execute the project on your device, follow these steps:  
 
@@ -90,13 +95,34 @@ if page == "Intro":
         ```bash
         pip3 install -r requirements.txt
         ```
-
-        <h1>Student Performance Factors</h1>
-
-        <p>The purpose of preprocessing the dataset <b>Student Performance Factors</b> is to structure and clean the data, enabling deep analysis of factors influencing academic performance. This process ensures that the data is clean, organized, and ready to reveal key relationships affecting students' success. Through this processed data analysis, effective educational strategies can be identified and implemented to improve students' achievements and elevate the quality of educational processes.</p>
+        
         """,
         unsafe_allow_html=True,
     )
+
+elif page == "Interactive Chart":
+    st.title("Interactive Dataset Visualization")
+    data = preprocessed_data
+
+    st.write("### Dataset Preview")
+    st.dataframe(data)
+
+    st.write("### Interactive Chart")
+    x_axis = st.selectbox("Select X-axis attribute", options=data.columns)
+    y_axis = st.selectbox("Select Y-axis attribute", options=data.columns)
+
+    fig = px.scatter(
+        data,
+        x=x_axis,
+        y=y_axis,
+        color=data.columns[0],
+        hover_data=data.columns,
+    )
+
+    st.plotly_chart(fig)
+
+    st.write("### Summary Statistics")
+    st.write(data.describe())
 
 elif page == "Preprocessed Data Quality":
     st.title("Preprocessed Data Quality Check")
@@ -347,4 +373,71 @@ elif page == "Class Imbalance":
     plt.tight_layout()
     st.pyplot(fig)
 
-# Run Streamlit app by typing: streamlit run dashboard.py
+if page == 'Insights and Visualizations':
+    st.title("Insights and Visualizations")
+
+    insights = {
+        "Attendance of student based on distance from home": ("Distance_from_Home", "Attendance"),
+        "Impact of parental involvement on exam scores": ("Parental_Involvement", "Exam_Score"),
+        "Relationship between family income and exam scores": ("Family_Income", "Exam_Score"),
+        "Effect of sleep hours on exam scores": ("Sleep_Hours", "Exam_Score"),
+        "Influence of attendance and study hours on exam scores": ("Attendance", "Exam_Score", "Hours_Studied"),
+        "Impact of tutoring sessions on exam scores": ("Tutoring_Sessions", "Exam_Score"),
+        "Role of motivation level in exam scores": ("Motivation_Level", "Exam_Score"),
+        "Impact of teacher quality on exam scores": ("Teacher_Quality", "Exam_Score")
+    }
+
+    chart_types = ["Bar Chart", "Scatter Plot", "Box Plot", "Line Plot"]
+
+    selected_insight = st.selectbox("Select the insight you want to visualize:", insights.keys())
+    selected_chart = st.selectbox("Select the type of visualization:", chart_types)
+
+    columns = insights[selected_insight]
+
+    palette = sns.color_palette("deep", as_cmap=True)
+
+    if selected_chart == "Box Plot":
+        fig, ax = plt.subplots()
+        sns.boxplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="deep")
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Scatter Plot":
+        fig, ax = plt.subplots()
+        if len(columns) == 3:
+            sns.scatterplot(
+                data=preprocessed_data, x=columns[0], y=columns[1], hue=columns[2], ax=ax, palette="deep"
+            )
+        else:
+            sns.scatterplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="deep")
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Bar Chart":
+        fig, ax = plt.subplots()
+        sns.barplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="deep")
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Line Plot":
+        fig, ax = plt.subplots()
+        sns.lineplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="deep")
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    if fig:
+        buf = BytesIO()
+        fig.savefig(buf, format="png")
+        buf.seek(0)
+        st.download_button(
+            label="Download visualization",
+            data=buf,
+            file_name=f"{selected_chart}_{columns[0]}_{columns[1]}.png",
+            mime="image/png"
+        )
+
+    else:
+        st.warning("Invalid selection.")
+
+
+# Run Streamlit app by typing: streamlit run dashboard/dashboard.py
