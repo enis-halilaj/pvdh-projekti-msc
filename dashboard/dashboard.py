@@ -9,7 +9,12 @@ from io import BytesIO
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder
 import plotly.express as px
+import streamlit as st
 
+st.set_page_config(
+    page_title="Student Performance Factors -  Visualizations & Insights",
+    page_icon="🎓",
+)
 
 def download_plot(fig, filename):
     buf = BytesIO()
@@ -387,19 +392,101 @@ if page == 'Insights and Visualizations':
         "Impact of teacher quality on exam scores": ("Teacher_Quality", "Exam_Score")
     }
 
-    chart_types = ["Bar Chart", "Scatter Plot", "Box Plot", "Line Plot"]
+    chart_types = ["Bar Chart", "Scatter Plot", "Box Plot", "Line Plot", "Bubble Chart"]
 
     selected_insight = st.selectbox("Select the insight you want to visualize:", insights.keys())
-    selected_chart = st.selectbox("Select the type of visualization:", chart_types)
 
     columns = insights[selected_insight]
 
+    if columns == ("Attendance", "Exam_Score", "Hours_Studied"):
+        chart_types = ["Bubble Chart"]
+    elif columns == ("Sleep_Hours", "Exam_Score"):
+        chart_types = [
+            "Bar Chart", 
+            "Scatter Plot", 
+            "Box Plot", 
+            "Line Plot", 
+            "Violin Plot", 
+            "Area Chart", 
+            "Density Plot", 
+            "Pair Plot"
+    ]
+    else:
+        chart_types = [
+        "Bar Chart", 
+        "Scatter Plot", 
+        "Box Plot", 
+        "Line Plot", 
+        "Violin Plot", 
+        "Area Chart", 
+        "Pair Plot"
+    ]
+
+    selected_chart = st.selectbox("Select the type of visualization:", chart_types)
+    
     palette = sns.color_palette("deep", as_cmap=True)
 
     if selected_chart == "Box Plot":
         fig, ax = plt.subplots()
         sns.boxplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="deep")
         ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Violin Plot":
+        fig, ax = plt.subplots()
+        sns.violinplot(data=preprocessed_data, x=columns[0], y=columns[1], ax=ax, palette="Blues")
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Density Plot":
+        if not pd.api.types.is_numeric_dtype(preprocessed_data[columns[0]]) and not pd.api.types.is_datetime64_any_dtype(preprocessed_data[columns[0]]):
+            st.error(f"The x-variable '{columns[0]}' must be numeric or datetime for a Density Plot. Please select a suitable column.")
+        else:
+            fig, ax = plt.subplots()
+            sns.kdeplot(data=preprocessed_data, x=columns[0], hue=columns[1], ax=ax, fill=True)
+            ax.set_title(f"Density Distribution of {columns[0]} by {columns[1]}")
+            st.pyplot(fig)
+    
+    elif selected_chart == "Area Chart":
+        fig, ax = plt.subplots()
+        ax.fill_between(preprocessed_data[columns[0]], preprocessed_data[columns[1]], color="skyblue", alpha=0.5)
+        ax.set_xlabel(columns[0])
+        ax.set_ylabel(columns[1])
+        ax.set_title(f"{selected_insight}")
+        st.pyplot(fig)
+    
+    elif selected_chart == "Bubble Matrix":
+        fig, ax = plt.subplots()
+        bubble_data = preprocessed_data[[columns[0], columns[1]]]
+        ax.scatter(bubble_data[columns[0]], bubble_data[columns[1]], s=bubble_data.sum(axis=1), alpha=0.6, c="blue")
+        ax.set_title(f"Bubble Matrix of {columns[0]} and {columns[1]}")
+        st.pyplot(fig)
+
+    elif selected_chart == "Pair Plot":
+        pairplot_data = preprocessed_data[[columns[0], columns[1]]]
+        pairplot = sns.pairplot(pairplot_data, diag_kind="kde")
+        fig = pairplot.fig
+        st.pyplot(fig)
+
+    elif selected_chart == "Bubble Chart":
+        fig, ax = plt.subplots()
+
+        scatter = ax.scatter(
+            preprocessed_data[columns[0]],
+            preprocessed_data[columns[1]],
+            s=preprocessed_data[columns[2]] * 10,
+            c=preprocessed_data[columns[2]],
+            cmap='Blues',
+            alpha=0.6
+        )
+
+        ax.set_xlabel(columns[0])
+        ax.set_ylabel(columns[1])
+        ax.set_title(f"{selected_insight}")
+
+        cbar = fig.colorbar(scatter, ax=ax)
+        cbar.set_label(columns[2])
+
         st.pyplot(fig)
 
     elif selected_chart == "Scatter Plot":
