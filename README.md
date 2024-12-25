@@ -2535,3 +2535,133 @@ plt.show()
 ```python
 pre_df.to_csv('../dataset/StudentPerformanceFactors_new.csv', index=False)
 ```
+
+<h2>3. FAZA E TRETË</h2>
+
+Në këtë fazë kemi zhvilluar një aplikacion interaktiv me Streamlit për të eksploruar dhe vizualizuar të dhëna nga dataset-i Student Performance Factors. Ky aplikacion u mundëson përdoruesve të analizojnë treguesit kryesorë të performancës dhe të zbulojnë trende, korrelacione dhe modele që ndikojnë në rezultatet e studentëve. Me një ndërfaqe të lehtë për t'u përdorur, ofron vizualizime dinamike dhe interaktive si grafe, tabela dhe filtra për eksplorim më të thellë.
+
+I përshtatshëm për mësues, profesor dhe studiues, ky aplikacion mundëson marrjen e vendimeve të bazuara në të dhëna për përmirësimin e suksesit të studentëve.
+
+Për të ekzekutuar aplikacionin Streamlit, shkruani komandën:
+
+```bash
+streamlit run dashboard/dashboard.py
+```
+
+### Vizualizimi interaktiv i të dhënave
+
+Ky modul paraqet një **grafik interaktiv** që mundëson eksplorimin e marrëdhënieve midis ndryshoreve të dataset-it. Në këtë shembull, përdoruesi ka zgjedhur atributin `Hours_Studied` për boshtin X dhe `Exam_Score` për boshtin Y, duke ilustruar një lidhje të mundshme midis orëve të studimit dhe rezultateve të provimeve. Grafiku gjithashtu përfshin një legjendë ngjyrash që reflekton përqendrimin e të dhënave bazuar në atributin `Hours_Studied`.
+
+Përveç grafikëve interaktivë, kjo pjesë përmban një **preview të dataset-it** dhe **statistika përmbledhëse**, të cilat ndihmojnë në analizimin e të dhënave të papërpunuara dhe të përpunuara. Këto veçori lejojnë përdoruesit të vlerësojnë cilësinë e të dhënave dhe të kuptojnë shpërndarjen e tyre përpara fazave të mëtejshme të analizës.
+
+![png](readme_files/interactive-chart.png)
+
+### Kontrolli i cilësisë së të dhënave
+
+Ky raport paraqet një pasqyrë të cilësisë së të dhënave të parapërpunuara, duke përfshirë analizën e strukturës së dataset-it, kontrollin e duplikatëve dhe vlerave të munguara, si dhe përmirësimet e bëra gjatë fazës së parapërpunimit. Dataset-i përmban kolona të rëndësishme si `Hours_Studied`, `Attendance`, `Parental_Involvement`, dhe të tjera, që ndihmojnë në vlerësimin e faktorëve kryesorë për performancën e studentëve.
+
+Raporti konfirmon se dataset-i është i pastër dhe i gatshëm për analizë të mëtejshme, pasi nuk janë gjetur rreshta të duplikuar ose vlera të munguara. Përmirësimet përfshijnë eliminimin e outlier-ëve, trajtimin e mungesave dhe përmirësimin e shpërndarjes së të dhënave për të siguruar cilësi më të mirë analitike.
+
+![png](readme_files/preprocessed-data-quality-check.png)
+
+### Analiza e korrelacionit për të dhëna
+
+
+
+Kjo seksion paraqet një **Analizë të Korrelacionit** për të dhënat e papërpunuara, duke ndihmuar përdoruesit të kuptojnë lidhjet midis ndryshoreve të përzgjedhura. Përdoruesi mund të zgjedhë ndryshore të ndryshme si `Exam_Score`, `Attendance`, `Hours_Studied`, dhe `Tutoring_Sessions` për të analizuar korrelacionet mes tyre.
+
+##### **Correlation Heatmap**
+Në grafikën **Correlation Heatmap**, paraqiten koeficientët e korrelacionit në një shkallë nga -1 në 1:
+- **E kuqe e errët**: Korrelacion i lartë pozitiv.
+- **E kaltër e errët**: Korrelacion i lartë negativ.
+- **Ngjyrat e ndërmjetme**: Lidhje të dobëta ose të moderuara.
+
+Për shembull, `Exam_Score` ka një lidhje pozitive me `Attendance` (0.58) dhe `Hours_Studied` (0.45), duke treguar një lidhje potencialisht të rëndësishme.
+
+##### **Tabela e Korrelacioneve**
+Përveç grafikës, të dhënat e korrelacionit janë të shfaqura në një **tabelë të detajuar** poshtë heatmap-it. Kjo i lejon përdoruesit të kenë një pasqyrë numerike të saktë për çdo çift ndryshorësh dhe të shkarkojnë vizualizimin për përdorim të mëtejshëm.
+
+![png](readme_files/correlation-analysis.png)
+
+
+### Grafiku 3D (plot)
+
+Ky modul ofron një **grafik 3D** që vizualizon marrëdhëniet midis tre ndryshoreve të përzgjedhura nga dataset-i. Ky lloj vizualizimi ndihmon përdoruesit të kuptojnë interaktivitetin dhe ndikimin e ndryshoreve të ndryshme në një hapësirë tre-dimensionale.
+
+##### Përcaktimi i Boshtit:
+- **Boshti X**: `Hours_Studied` – Numri i orëve të studimit.
+- **Boshti Y**: `Exam_Score` – Rezultatet në provim.
+- **Boshti Z**: `Attendance` – Pjesëmarrja në orë.
+
+Grafiku paraqet të dhënat me një shpërndarje të ngjyrave, duke treguar vlera të ndryshme për boshtin Z (`Attendance`). Ngjyrat e ndriçuara tregojnë pjesëmarrje të lartë, ndërsa ngjyrat e errëta tregojnë pjesëmarrje më të ulët. Kjo vizualizim interaktiv mund të ndihmojë në zbulimin e modeleve komplekse që nuk janë të dukshme në dy dimensione.
+
+Ky modul është i dobishëm për analizimin dhe eksplorimin e të dhënave shumëdimensionale, duke u mundësuar përdoruesve të krijojnë interpretime më të sakta dhe të vlefshme për të dhënat e tyre.
+
+![png](readme_files/3d-plots.png)
+
+### Krahasimi i të dhënave të papërpunuara dhe të parapërpunuara
+
+Ky modul ofron një krahasim të detajuar midis të dhënave të papërpunuara dhe atyre të parapërpunuara për të kuptuar ndryshimet e bëra gjatë procesit të parapërpunimit. Këto analiza ndihmojnë në vlerësimin e përmirësimeve të cilësisë së të dhënave dhe ndikimit të parapërpunimit.
+
+##### **Dallimet në Kolona**
+- **Shtuar**: Kolonat e reja të shtuar gjatë parapërpunimit përfshijnë `Exam_Result`.
+- **Hequr**: Kolona të larguara nga dataset-i përfshijnë `Access_to_Resources`.
+
+##### **Krahasimi i Numrit të Rreshtave**
+- **Dataset i papërpunuar**: Përmban **6607 rreshta**.
+- **Dataset i parapërpunuar**: Përmban **6506 rreshta**, duke reflektuar heqjen e rreshtave të pavlefshëm ose të dublikuar.
+
+##### **Krahasimi i Outliers**
+Ky modul përfshin një vizualizim të **outlier-ve** për një atribut numerik të përzgjedhur nga përdoruesi, si p.sh. `Exam_Score`. Grafikat për dataset-in e papërpunuar dhe atë të parapërpunuar tregojnë ndryshimet në shpërndarjen e outlier-ve pas parapërpunimit. 
+- Në dataset-in e papërpunuar, outlier-t janë më të dukshëm dhe më të përhapur.
+- Në dataset-in e parapërpunuar, outlier-t janë zvogëluar për të përmirësuar cilësinë e të dhënave.
+
+##### **Tabela Përmbledhëse**
+Përveç grafikëve, rezultatet e krahasimit shfaqen në një **tabelë të detajuar** poshtë vizualizimeve. Kjo tabelë përmban të dhëna numerike dhe përshkrime të ndryshimeve midis dataset-eve të papërpunuara dhe të parapërpunuara, duke u lejuar përdoruesve të analizojnë rezultatet në mënyrë më të thelluar.
+
+![png](readme_files/comparisons.png)
+
+
+### Visualizimet dhe njohuritë
+
+Ky modul mundëson vizualizime të avancuara për të nxjerrë **informacion të rëndësishëm** nga dataset-i dhe për të analizuar marrëdhëniet midis ndryshoreve. Në këtë shembull, vizualizimi fokusohet në **ndikimin e sesioneve të tutorimit në rezultatet e provimeve**, duke përdorur një **Line Plot**.
+
+##### **Opsionet e Vizualizimeve**
+Përdoruesi mund të zgjedhë nga disa lloje vizualizimesh për të përshtatur analizën e të dhënave:
+- **Bar Chart**: Vizualizimi i të dhënave kategorike me shtylla.
+- **Scatter Plot**: Analiza e shpërndarjes së të dhënave numerike.
+- **Box Plot**: Shfaqja e shpërndarjes dhe outlier-ve për një variabël.
+- **Line Plot**: Ilustrimi i tendencave me kalimin e kohës ose mbi një atribut numerik.
+- **Violin Plot**: Vizualizimi i shpërndarjes së të dhënave dhe dendësisë.
+- **Area Chart**: Vizualizimi i tendencave numerike me sipërfaqe.
+- **Pair Plot**: Matrica e vizualizimeve për të gjitha çiftet e variablave numerikë.
+
+##### **Shembulli i Line Plot**
+Në këtë shembull:
+- **Insight i zgjedhur**: Ndikimi i sesioneve të tutorimit në rezultatet e provimeve (`Tutoring_Sessions` dhe `Exam_Score`).
+- **Rezultat**: Rezultatet e provimeve rriten në mënyrë progresive me shtimin e sesioneve të tutorimit, duke treguar një lidhje pozitive.
+
+##### **Funksionalitete Shtesë**
+- **Zgjedhje e fleksibilitetit**: Lloji i vizualizimit mund të ndryshohet bazuar në natyrën e të dhënave dhe kërkesat e analizës.
+- **Shkarkimi i vizualizimeve**: Vizualizimi mund të shkarkohet për përdorim në raporte dhe prezantime.
+
+![png](readme_files/visualizations-2.png)
+
+<hr/>
+
+Në këtë shembull, vizualizimi përqendrohet në **pjesëmarrjen e studentëve bazuar në distancën nga shtëpia**, duke përdorur një **Box Plot**.
+
+![Vizualizimi i Pjesëmarrjes](readme_files/visualizations-1.png)
+
+## **Opsionet e Vizualizimit**
+- **Insight i zgjedhur**: Pjesëmarrja e studentëve bazuar në distancën nga shtëpia (`Near`, `Moderate`, `Far`).
+- **Lloji i vizualizimit**: **Box Plot**, i cili shfaq shpërndarjen, median dhe outliers për pjesëmarrjen e studentëve.
+
+## **Interpretimi i Box Plot**
+- **Near (Afër)**: Studentët që jetojnë afër tregojnë pjesëmarrje më të lartë dhe më të qëndrueshme.
+- **Moderate (Mesatare)**: Pjesëmarrja është e krahasueshme me grupin "Near" por tregon një shpërndarje më të gjerë.
+- **Far (Larg)**: Pjesëmarrja është më e ulët dhe varianca është më e madhe, duke sugjeruar që largësia ndikon negativisht në pjesëmarrje.
+
+## **Funksionalitete Shtesë**
+- **Zgjedhja e insights dhe vizualizimeve**: Përdoruesi mund të ndryshojë variablat dhe llojet e vizualizimit për analiza të personalizuara.
+- **Shkarkimi i vizualizimit**: Vizualizimi mund të shkarkohet për dokumentim ose ndarje.
